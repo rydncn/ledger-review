@@ -1,0 +1,84 @@
+[project]
+name = "tally"
+version = "0.1.0"
+description = "See where your money goes, from the statement files your bank lets you download, entirely on your own computer."
+readme = "README.md"
+requires-python = ">=3.15"
+license = "MIT"
+# Standard library first: the application has no runtime dependencies.
+dependencies = []
+
+[project.scripts]
+tally = "tally.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.9,<0.14"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+  # Ranges here; the exact versions are the lockfile's, under exclude-newer.
+  "ruff>=0.17,<0.18",
+  "mypy>=2.4,<3",
+  "pytest>=9.2,<10",
+  "pytest-randomly>=4,<5",
+  "pytest-xdist>=3.8,<4",
+  "pip-audit>=2.10,<3",
+]
+# Apart, because mutmut needs pyyaml, which has no Python 3.15 wheel yet, so
+# it is the one package built from source (ADR 0003). Only the mutation job
+# installs this group, without --no-build.
+mutation = ["mutmut>=3.8,<4"]
+
+[tool.uv]
+default-groups = ["dev"]
+# Supply chain (the Python side of templates/npmrc). Nothing published in the
+# seven days before the lock (move the date when dependencies change); the
+# lockfile's hashes are checked on every sync. Source builds (a package's own
+# setup.py running at install time) are refused with --no-build on every
+# install except the mutation job's: the setting lives in the CI workflow
+# and scripts/setup-dev.sh rather than here, because uv has no per-package
+# exception and mutmut's pyyaml has no Python 3.15 wheel yet (ADR 0003).
+exclude-newer = "2026-11-03T00:00:00Z"
+
+[tool.ruff]
+target-version = "py315"
+line-length = 100
+src = ["src", "tests"]
+extend-exclude = ["docs"]
+
+[tool.ruff.lint]
+select = [
+  "E", "W", "F", "I", "UP", "B", "SIM", "RUF", "PL", "S", "PT", "T20", "N", "ANN", "FBT", "TRY",
+]
+ignore = [
+  "PLR2004",  # magic values in tests and parsers are usually clearer inline
+  "TRY003",   # long messages in exceptions are the point of a good error
+  "ANN401",   # Any is sometimes the honest annotation for JSON-shaped data
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S603", "PLR0913", "ANN", "FBT", "PLC1901"]  # S603: subprocess tests are the point (ADR 0002)
+"scripts/**" = ["T201", "S603", "S607"]  # build scripts print and run the tools
+"src/tally/cli.py" = ["T201"]  # the command line prints; everything else goes through it
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.15"
+strict = true
+warn_unreachable = true
+files = ["src", "tests", "scripts"]
+
+[tool.pytest.ini_options]
+# -p no:cacheprovider: no cached results, so every run is from scratch.
+# pytest-randomly shuffles the order on every run; the seed is printed so a
+# failure can be replayed with -p randomly -p "randomly_seed=<seed>".
+addopts = "-p no:cacheprovider --strict-markers --strict-config -ra"
+testpaths = ["tests"]
+xfail_strict = true
+filterwarnings = ["error"]
+
+[tool.mutmut]
+source_paths = ["src/tally/"]

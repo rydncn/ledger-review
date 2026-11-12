@@ -1,0 +1,188 @@
+name: CI
+
+# CI for a uv-managed Python project. Pull requests start as drafts: the quick checks run
+# on every push, and the tests, mutation testing and the audit wait until the
+# pull request is ready for review. Make every job a required check by name.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# An explicit bash runs every step with -eo pipefail, so `pytest | tee log`
+# fails when pytest does.
+defaults:
+  run:
+    shell: bash
+
+# A newer push to a pull request cancels its older run. Runs on main are never
+# cancelled, so a broken merge can't hide behind the next one.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+env:
+  # Source builds off everywhere but the mutation job (ADR 0003): a package's
+  # setup.py never runs at install time. The Python side of ignore-scripts.
+  UV_NO_BUILD: "1"
+
+jobs:
+  checks:
+    name: Format, lint and types
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.13.7"
+          enable-cache: true
+      # Prove the supply-chain settings take effect. The lockfile is
+      # current, pins nothing newer than the release-age cutoff, and every
+      # install here refuses source builds.
+      - name: Supply-chain settings take effect
+        run: |
+          uv lock --check
+          grep -q '^exclude-newer = "' pyproject.toml || { echo "exclude-newer is not set in pyproject.toml"; exit 1; }
+          test "$UV_NO_BUILD" = "1" || { echo "UV_NO_BUILD is not on"; exit 1; }
+      - name: Install
+        run: uv sync --locked
+      - name: Format
+        run: uv run ruff format --check .
+      - name: Lint
+        run: uv run ruff check .
+      - name: Types
+        run: uv run mypy
+      # Project rules that a grep can see; each fails
+      # when it finds nothing to scan.
+      - name: Rule checks
+        run: node scripts/check-rules.js scripts/rules.json
+      # The same boundaries read from the syntax tree: every import under src/ on the
+      # allowed list, no float literal (an alias or a from-import passes a word check).
+      - name: Imports
+        run: uv run python scripts/check_imports.py
+
+  tests:
+    name: Tests
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.13.7"
+          enable-cache: true
+      - name: Install
+        run: uv sync --locked
+      # Random order (pytest-randomly), in parallel (pytest-xdist), with no
+      # cached results (-p no:cacheprovider in pyproject.toml): order
+      # dependence and shared state fail here. pytest exits 5 when
+      # it collected no tests, so an empty run fails on its own.
+      - name: Tests
+        run: uv run pytest -n auto 2>&1 | tee test.log
+      - name: Tests ran
+        run: grep -qE '^=+ [0-9]+ passed' test.log || { echo "no test reported passed"; exit 1; }
+
+  mutation:
+    name: Mutation testing on changed files
+    if: github.event_name == 'pull_request' && !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    # A change across seven source files is about 1,750 mutants and 45 minutes.
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # the base branch, to diff against
+      - name: Setup uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.13.7"
+          enable-cache: true
+      # The one install that builds from source: mutmut's pyyaml has no
+      # Python 3.15 wheel yet (ADR 0003).
+      - name: Install with the mutation group
+        env:
+          UV_NO_BUILD: "0"
+        run: uv sync --locked --group mutation
+      - name: Mutation testing on changed files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: uv run python scripts/mutation_changed.py "$BASE_SHA"
+
+  security:
+    name: Dependencies and secrets
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # full history, so secrets in earlier commits are found too
+      - name: Setup uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.13.7"
+          enable-cache: true
+      # The lockfile only points at PyPI over HTTPS with a hash on every
+      # file (the Python side of lockfile-lint). Before anything installs
+      # from it, with the runner's own Python.
+      - name: Lockfile integrity
+        run: python3 scripts/check_lock.py
+      - name: Install
+        run: uv sync --locked
+      # pip-audit over the exported lockfile, with a dated allowlist for
+      # advisories nobody can fix yet (scripts/audit-allowlist.json).
+      - name: Dependency audit
+        run: uv run python scripts/audit.py scripts/audit-allowlist.json
+      # gitleaks from its release, checked against a pinned checksum. The same
+      # command runs locally. When updating, take the new checksum from that
+      # release's gitleaks_<version>_checksums.txt.
+      - name: Install gitleaks
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -fsSLo "$RUNNER_TEMP/$archive" "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/$archive"
+          echo "$GITLEAKS_SHA256  $RUNNER_TEMP/$archive" | sha256sum --check --strict
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" gitleaks
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      # The history reachable from the checked-out commit, not every branch:
+      # by default gitleaks scans all refs, so a secret planted on a proof
+      # branch would turn every pull request red.
+      - name: Secrets scan
+        run: gitleaks git --redact --verbose --log-opts="HEAD"
+      # zizmor lints the workflows: script injection, risky triggers, broad
+      # permissions, credentials left on disk, and pinned SHAs that aren't the
+      # version their comment claims (online, with the job's token).
+      - name: Install zizmor
+        env:
+          ZIZMOR_VERSION: 1.32.0
+          ZIZMOR_SHA256: bb110cc765eca9cd7efb2e284a956be5974c60027b0970f16397d86208a9957b
+        run: |
+          archive="zizmor-x86_64-unknown-linux-gnu.tar.gz"
+          curl -fsSLo "$RUNNER_TEMP/$archive" "https://github.com/zizmorcore/zizmor/releases/download/v${ZIZMOR_VERSION}/$archive"
+          echo "$ZIZMOR_SHA256  $RUNNER_TEMP/$archive" | sha256sum --check --strict
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" zizmor
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      - name: Workflow security lint
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: zizmor --format=github .github/workflows

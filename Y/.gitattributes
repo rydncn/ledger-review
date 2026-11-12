@@ -1,0 +1,3 @@
+# The sample statements keep the bytes their banks produce: a byte order
+# mark, Windows line endings, Latin-1. Git must not normalise them.
+samples/* -text

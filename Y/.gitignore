@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+dist/
+build/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+mutants/
+.mutmut-cache
+
+# Secrets and local data
+.env
+.env.*
+!.env.example
+*.sqlite
+*.sqlite3
+*.db
+

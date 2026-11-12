@@ -1,0 +1,48 @@
+[project]
+name = "tally"
+version = "0.1.0"
+description = "See where your money goes, from the statement files your bank lets you download. Runs entirely on your own computer."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.15"
+authors = [{ name = "Ryan Duncan" }]
+keywords = ["finance", "bank-statement", "csv", "ofx", "budgeting", "cli"]
+classifiers = [
+  "Environment :: Console",
+  "Intended Audience :: End Users/Desktop",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.15",
+  "Topic :: Office/Business :: Financial :: Accounting",
+]
+dependencies = []
+
+[project.scripts]
+tally = "tally.cli:main"
+
+[project.urls]
+Repository = "https://github.com/<owner>/tally"
+
+[build-system]
+requires = ["uv_build>=0.8,<1"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+  "pytest>=8",
+  "ruff>=0.8",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = ["slow: takes more than a second or two"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+ignore = ["RUF012", "SIM108", "SIM102"]

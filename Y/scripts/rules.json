@@ -1,0 +1,23 @@
+[
+  {
+    "id": "no-float-for-money",
+    "message": "Amounts are exact: no float anywhere money is held, parsed or summed. Use Decimal or integer minor units.",
+    "dirs": ["src"],
+    "extensions": [".py"],
+    "pattern": "\\bfloat\\b"
+  },
+  {
+    "id": "no-network",
+    "message": "Tally never makes a network connection.",
+    "dirs": ["src"],
+    "extensions": [".py"],
+    "pattern": "\\b(urllib\\.request|http\\.client|socket|requests|httpx|urlopen|smtplib|ftplib)\\b"
+  },
+  {
+    "id": "no-raw-control-character",
+    "message": "A raw control character (C0 but tab and line feed, or DEL) is in source: an escape written in an editor can arrive as the character itself. Write chr(0x1B) or an escape instead.",
+    "dirs": ["src", "tests", "scripts", ".github"],
+    "extensions": [".py", ".js", ".mjs", ".cjs", ".json", ".toml", ".sh", ".yml", ".yaml", ".md"],
+    "pattern": "[\\u0000-\\u0008\\u000b-\\u001f\\u007f]"
+  }
+]
