@@ -1,0 +1,263 @@
+{
+ "1": {
+  "title": "The same file imported twice",
+  "verdict": "pass",
+  "evidence": [
+   "$ tally account add cur --currency GBP\n  rc=0\n  stdout: 'Created account cur in GBP.\\n'\n  stderr: ''",
+   "$ tally import /tmp/tally-X-18368d9s/current-account.csv --account cur --layout cur\n  rc=0\n  stdout: 'Imported current-account.csv into cur: 5 added, 0 already there, 0 skipped.\\n  note: line 4: the row had more fields than the header; the extra text was treated as part of the description\\n  note: line 5: a money-in or money-out amount carried a minus sign or brackets; the column decides the direction, so the sign was ignored\\n'\n  stderr: ''",
+   "transactions in the data file: 5",
+   "$ tally import /tmp/tally-X-18368d9s/current-account.csv --account cur --layout cur\n  rc=0\n  stdout: 'Note: this file was imported into cur before, on 2026-11-12.\\nImported current-account.csv into cur: 0 added, 5 already there, 0 skipped.\\n  note: line 4: the row had more fields than the header; the extra text was treated as part of the description\\n  note: line 5: a money-in or money-out amount carried a minus sign or brackets; the column decides the direction, so the sign was ignored\\n'\n  stderr: ''",
+   "transactions in the data file: 5"
+  ],
+  "seconds": 0.2
+ },
+ "2": {
+  "title": "Two statements whose dates overlap",
+  "verdict": "pass",
+  "evidence": [
+   "$ tally import /tmp/tally-X-i3kmg7u1/sept.csv --account cur --layout cur\n  rc=0\n  stdout: 'Imported sept.csv into cur: 3 added, 0 already there, 0 skipped.\\n'\n  stderr: ''",
+   "$ tally import /tmp/tally-X-i3kmg7u1/oct.csv --account cur --layout cur\n  rc=0\n  stdout: 'Imported oct.csv into cur: 2 added, 2 already there, 0 skipped.\\n'\n  stderr: ''",
+   "transactions in the data file: 5 (expected 5)",
+   "2026-09-28 -42.17 'TESCO STORES 2045, LEEDS'",
+   "2026-09-30 2450.00 'SALARY ACME LTD'",
+   "2026-10-01 -3.40 'TFL TRAVEL CH'",
+   "2026-10-02 -3.40 'CAFE'",
+   "2026-10-05 -156.00 'DIRECT DEBIT COUNCIL TAX'"
+  ],
+  "seconds": 0.3
+ },
+ "3": {
+  "title": "Two imports of one file at the same moment",
+  "verdict": "pass",
+  "evidence": [
+   "trial 1: rc=0 stdout='Note: this file was imported into cur before, on 2026-11-12.\\nImported big.csv into cur: 0 added, 2000 already there, 0 skipped.' stderr=''",
+   "trial 1: rc=0 stdout='Imported big.csv into cur: 2000 added, 0 already there, 0 skipped.' stderr=''",
+   "trial 1: transactions=2000 (expected 2000), integrity_check=ok, added=[0, 2000]",
+   "trial 2: rc=0 stdout='Note: this file was imported into cur before, on 2026-11-12.\\nImported big.csv into cur: 0 added, 2000 already there, 0 skipped.' stderr=''",
+   "trial 2: rc=0 stdout='Imported big.csv into cur: 2000 added, 0 already there, 0 skipped.' stderr=''",
+   "trial 2: transactions=2000 (expected 2000), integrity_check=ok, added=[0, 2000]",
+   "trial 3: rc=0 stdout='Imported big.csv into cur: 0 added, 2000 already there, 0 skipped.' stderr=''",
+   "trial 3: rc=0 stdout='Imported big.csv into cur: 2000 added, 0 already there, 0 skipped.' stderr=''",
+   "trial 3: transactions=2000 (expected 2000), integrity_check=ok, added=[0, 2000]"
+  ],
+  "seconds": 0.7
+ },
+ "4": {
+  "title": "The three sample files",
+  "verdict": "pass",
+  "evidence": [
+   "$ tally import /tmp/tally-X-9lnic5jh/current-account.csv --account cur --layout cur\n  rc=0\n  stdout: 'Imported current-account.csv into cur: 5 added, 0 already there, 0 skipped.\\n  note: line 4: the row had more fields than the header; the extra text was treated as part of the description\\n  note: line 5: a money-in or money-out amount carried a minus sign or brackets; the column decides the direction, so the sign was ignored\\n'\n  stderr: ''",
+   "$ tally import /tmp/tally-X-9lnic5jh/credit-card.csv --account card --layout card\n  rc=0\n  stdout: 'Imported credit-card.csv into card: 3 added, 0 already there, 0 skipped.\\n'\n  stderr: ''",
+   "$ tally import /tmp/tally-X-9lnic5jh/savings.ofx --account sav\n  rc=0\n  stdout: 'Imported savings.ofx into sav: 2 added, 0 already there, 0 skipped.\\n'\n  stderr: ''",
+   "read back:",
+   "cur 2026-10-01 -42.17 'TESCO STORES 2045, LEEDS'",
+   "sav 2026-10-01 12.34 'INTEREST'",
+   "cur 2026-10-02 2450.00 'SALARY ACME LTD'",
+   "card 2026-10-02 -4.20 'CAFÉ NERO'",
+   "cur 2026-10-03 12.50 '=HYPERLINK(\"http://example.invalid\",Refund)'",
+   "cur 2026-10-03 -3.40 'TFL TRAVEL CH'",
+   "card 2026-10-03 -23.99 'AMAZON MARKETPLACE'",
+   "card 2026-10-03 150.00 'PAYMENT RECEIVED - THANK YOU'",
+   "cur 2026-10-05 -156.00 'DIRECT DEBIT COUNCIL TAX'",
+   "sav 2026-10-15 -500.00 'TRANSFER TO CURRENT'",
+   "MISSING or different: [('cur', '2026-10-03', '12.50', '=HYPERLINK(\"http://example.invalid\",\"Refund\")')]",
+   "UNEXPECTED: [('cur', '2026-10-03', '12.50', '=HYPERLINK(\"http://example.invalid\",Refund)')]",
+   "note: the HYPERLINK row's amount and date are right; only its description text differs"
+  ],
+  "seconds": 0.4
+ },
+ "5": {
+  "title": "An ambiguous date",
+  "verdict": "pass",
+  "evidence": [
+   "$ tally import /tmp/tally-X-_pve232b/ambiguous.csv --account cur --layout s\n  rc=3\n  stdout: 'Imported ambiguous.csv into cur: 1 added, 0 already there, 1 skipped.\\n  skipped line 3: could not read the date (expected the format %d/%m/%Y)\\n  Run with --show-rows to see the values that could not be read.\\n'\n  stderr: ''",
+   "2026-02-01 -1.00 'AMBIGUOUS'",
+   "expect 01/02/2026 -> 2026-02-01, and 02/13/2026 refused (not swapped to 13 Feb) under %d/%m/%Y"
+  ],
+  "seconds": 0.2
+ },
+ "6": {
+  "title": "Exact money: 100 x 0.10",
+  "verdict": "pass",
+  "evidence": [
+   "$ tally import /tmp/tally-X-d44wwxo9/pennies.csv --account cur --layout s\n  rc=0\n  stdout: 'Imported pennies.csv into cur: 300 added, 0 already there, 0 skipped.\\n'\n  stderr: ''",
+   "transactions in the data file: 300 (expected 300: 100 COFFEE -0.10, 100 REFUND +0.10, 100 BAKERY -0.10)",
+   "$ tally report --month 2026-10\n  rc=0\n  stdout: 'Month    Currency  Category       Spending  Income     Net  Count\\n-------  --------  -------------  --------  ------  ------  -----\\n2026-10  GBP       Bakery            10.00    0.00  -10.00    100\\n2026-10  GBP       Coffee            10.00    0.00  -10.00    100\\n2026-10  GBP       Uncategorised      0.00   10.00   10.00    100\\n2026-10  GBP       Total             20.00   10.00  -10.00    300\\nSpending and income are shown as positive amounts; Net is income minus spending.\\n'\n  stderr: ''",
+   "  (a total row of 20.00 spending is present)",
+   "$ tally report --month 2026-10 --format csv\n  rc=0\n  stdout: 'Month,Currency,Category,Spending,Income,Net,Count\\n2026-10,GBP,Bakery,10.00,0.00,-10.00,100\\n2026-10,GBP,Coffee,10.00,0.00,-10.00,100\\n2026-10,GBP,Uncategorised,0.00,10.00,10.00,100\\n'\n  stderr: ''",
+   "  (a total row of 20.00 spending is absent)",
+   "$ tally report --month 2026-10 --format json\n  rc=0\n  stdout: '{\\n  \"rows\": [\\n    {\\n      \"month\": \"2026-10\",\\n      \"currency\": \"GBP\",\\n      \"category\": \"Bakery\",\\n      \"spending\": \"10.00\",\\n      \"income\": \"0.00\",\\n      \"net\": \"-10.00\",\\n      \"count\": 100\\n    },\\n    {\\n      \"month\": \"2026-10\",\\n      \"currency\": \"GBP\",\\n      \"category\": \"Coffee\",\\n      \"spending\": \"10.00\",\\n      \"income\": \"0.00\",\\n      \"net\": \"-10.00\",\\n      \"count\": 100\\n    },\\n    {\\n      \"month\": \"2026-10\",\\n      \"currency\": \"GBP\",\\n      \"category\": \"Uncategorised\",\\n      \"spending\": \"0.00\",\\n      \"income\": \"10.00\",\\n      \"net\": \"10.00\",\\n      \"count\": 100\\n    }\\n  ],\\n  \"totals\": [\\n    {\\n      \"month\": \"2026-10\",\\n      \"currency\": \"GBP\",\\n      \"category\": null,\\n      \"spending\": \"20.00\",\\n      \"income\": \"10.00\",\\n      \"net\": \"-10.00\",\\n      \"count\": 300,\\n      \"total\": true\\n    }\\n  ]\\n}\\n'\n  stderr: ''",
+   "  (a total row of 20.00 spending is present)",
+   "$ tally payees --month 2026-10\n  rc=0\n  stdout: 'Rank  Currency  Payee       Spending  Count\\n----  --------  ----------  --------  -----\\n   1  GBP       BAKERY         10.00    100\\n   2  GBP       COFFEE 000      0.10      1\\n   3  GBP       COFFEE 001      0.10      1\\n   4  GBP       COFFEE 002      0.10      1\\n   5  GBP       COFFEE 003      0.10      1\\n   6  GBP       COFFEE 004      0.10      1\\n   7  GBP       COFFEE 005      0.10      1\\n   8  GBP       COFFEE 006      0.10      1\\n   9  GBP       COFFEE 007      0.10      1\\n  10  GBP       COFFEE 008      0.10      1\\n'\n  stderr: ''",
+   "$ tally payees --month 2026-10 --format csv\n  rc=0\n  stdout: 'Rank,Currency,Payee,Spending,Count\\n1,GBP,BAKERY,10.00,100\\n2,GBP,COFFEE 000,0.10,1\\n3,GBP,COFFEE 001,0.10,1\\n4,GBP,COFFEE 002,0.10,1\\n5,GBP,COFFEE 003,0.10,1\\n6,GBP,COFFEE 004,0.10,1\\n7,GBP,COFFEE 005,0.10,1\\n8,GBP,COFFEE 006,0.10,1\\n9,GBP,COFFEE 007,0.10,1\\n10,GBP,COFFEE 008,0.10,1\\n'\n  stderr: ''",
+   "$ tally payees --month 2026-10 --format json\n  rc=0\n  stdout: '[\\n  {\\n    \"rank\": 1,\\n    \"currency\": \"GBP\",\\n    \"payee\": \"BAKERY\",\\n    \"spending\": \"10.00\",\\n    \"count\": 100\\n  },\\n  {\\n    \"rank\": 2,\\n    \"currency\": \"GBP\",\\n    \"payee\": \"COFFEE 000\",\\n    \"spending\": \"0.10\",\\n    \"count\": 1\\n  },\\n  {\\n    \"rank\": 3,\\n    \"currency\": \"GBP\",\\n    \"payee\": \"COFFEE 001\",\\n    \"spending\": \"0.10\",\\n    \"count\": 1\\n  },\\n  {\\n    \"rank\": 4,\\n    \"currency\": \"GBP\",\\n    \"payee\": \"COFFEE 002\",\\n    \"spending\": \"0.10\",\\n    \"count\": 1\\n  },\\n  {\\n    \"rank\": 5,\\n    \"currency\": \"GBP\",\\n    \"payee\": \"COFFEE 003\",\\n    \"spending\": \"0.10\",\\n    \"count\": 1\\n  },\\n  {\\n    \"rank\": 6,\\n    \"currency\": \"GBP\",\\n    \"payee\": \"COFFEE 004\",\\n    \"spending\": \"0.10\",\\n    \"count\": 1\\n  },\\n  {\\n    \"rank\": 7,\\n    \"currency\": \"GBP\",\\n    \"payee\": \"COFFEE 005\",\\n    \"spending\": \"0.10\",\\n    \"count\": 1\\n  },\\n  {\\n    \"rank\": 8,\\n    \"currency\": \"GBP\",\\n    \"payee\": \"COFFEE 006\",\\n    \"spending\": \"0.10\",\\n    \"count\": 1\\n  },\\n  {\\n    \"rank\": 9,\\n    \"currency\": \"GBP\",\\n    \"payee\": \"COFFEE 007\",\\n    \"spending\": \"0.10\",\\n    \"count\": 1\\n  },\\n  {\\n    \"rank\": 10,\\n    \"currency\": \"GBP\",\\n    \"payee\": \"COFFEE 008\",\\n    \"spending\": \"0.10\",\\n    \"count\": 1\\n  }\\n]\\n'\n  stderr: ''"
+  ],
+  "seconds": 0.5
+ },
+ "7": {
+  "title": "Two currencies never added together",
+  "verdict": "pass",
+  "evidence": [
+   "$ tally import /tmp/tally-X-4w58gy7n/gbp.csv --account uk --layout s\n  rc=0\n  stdout: 'Imported gbp.csv into uk: 2 added, 0 already there, 0 skipped.\\n'\n  stderr: ''",
+   "$ tally import /tmp/tally-X-4w58gy7n/eur.csv --account eu --layout s\n  rc=0\n  stdout: 'Imported eur.csv into eu: 2 added, 0 already there, 0 skipped.\\n'\n  stderr: ''",
+   "$ tally report --month 2026-10\n  rc=0\n  stdout: 'Month    Currency  Category       Spending  Income     Net  Count\\n-------  --------  -------------  --------  ------  ------  -----\\n2026-10  EUR       Shops              5.00    0.00   -5.00      1\\n2026-10  EUR       Uncategorised      0.00    2.40    2.40      1\\n2026-10  EUR       Total              5.00    2.40   -2.60      2\\n2026-10  GBP       Shops             10.00    0.00  -10.00      1\\n2026-10  GBP       Uncategorised      0.00    1.30    1.30      1\\n2026-10  GBP       Total             10.00    1.30   -8.70      2\\nSpending and income are shown as positive amounts; Net is income minus spending.\\n'\n  stderr: ''",
+   "$ tally report --month 2026-10 --format csv\n  rc=0\n  stdout: 'Month,Currency,Category,Spending,Income,Net,Count\\n2026-10,EUR,Shops,5.00,0.00,-5.00,1\\n2026-10,EUR,Uncategorised,0.00,2.40,2.40,1\\n2026-10,GBP,Shops,10.00,0.00,-10.00,1\\n2026-10,GBP,Uncategorised,0.00,1.30,1.30,1\\n'\n  stderr: ''",
+   "$ tally report --month 2026-10 --format json\n  rc=0\n  stdout: '{\\n  \"rows\": [\\n    {\\n      \"month\": \"2026-10\",\\n      \"currency\": \"EUR\",\\n      \"category\": \"Shops\",\\n      \"spending\": \"5.00\",\\n      \"income\": \"0.00\",\\n      \"net\": \"-5.00\",\\n      \"count\": 1\\n    },\\n    {\\n      \"month\": \"2026-10\",\\n      \"currency\": \"EUR\",\\n      \"category\": \"Uncategorised\",\\n      \"spending\": \"0.00\",\\n      \"income\": \"2.40\",\\n      \"net\": \"2.40\",\\n      \"count\": 1\\n    },\\n    {\\n      \"month\": \"2026-10\",\\n      \"currency\": \"GBP\",\\n      \"category\": \"Shops\",\\n      \"spending\": \"10.00\",\\n      \"income\": \"0.00\",\\n      \"net\": \"-10.00\",\\n      \"count\": 1\\n    },\\n    {\\n      \"month\": \"2026-10\",\\n      \"currency\": \"GBP\",\\n      \"category\": \"Uncategorised\",\\n      \"spending\": \"0.00\",\\n      \"income\": \"1.30\",\\n      \"net\": \"1.30\",\\n      \"count\": 1\\n    }\\n  ],\\n  \"totals\": [\\n    {\\n      \"month\": \"2026-10\",\\n      \"currency\": \"EUR\",\\n      \"category\": null,\\n      \"spending\": \"5.00\",\\n      \"income\": \"2.40\",\\n      \"net\": \"-2.60\",\\n      \"count\": 2,\\n      \"total\": true\\n    },\\n    {\\n      \"month\": \"2026-10\",\\n      \"currency\": \"GBP\",\\n      \"category\": null,\\n      \"spending\": \"10.00\",\\n      \"income\": \"1.30\",\\n      \"net\": \"-8.70\",\\n      \"count\": 2,\\n      \"total\": true\\n    }\\n  ]\\n}\\n'\n  stderr: ''",
+   "$ tally payees --month 2026-10\n  rc=0\n  stdout: 'Rank  Currency  Payee  Spending  Count\\n----  --------  -----  --------  -----\\n   1  EUR       SHOP       5.00      1\\n   1  GBP       SHOP      10.00      1\\n'\n  stderr: ''",
+   "$ tally payees --month 2026-10 --format csv\n  rc=0\n  stdout: 'Rank,Currency,Payee,Spending,Count\\n1,EUR,SHOP,5.00,1\\n1,GBP,SHOP,10.00,1\\n'\n  stderr: ''",
+   "$ tally payees --month 2026-10 --format json\n  rc=0\n  stdout: '[\\n  {\\n    \"rank\": 1,\\n    \"currency\": \"EUR\",\\n    \"payee\": \"SHOP\",\\n    \"spending\": \"5.00\",\\n    \"count\": 1\\n  },\\n  {\\n    \"rank\": 1,\\n    \"currency\": \"GBP\",\\n    \"payee\": \"SHOP\",\\n    \"spending\": \"10.00\",\\n    \"count\": 1\\n  }\\n]\\n'\n  stderr: ''",
+   "$ tally uncategorised\n  rc=0\n  stdout: 'Id  Date        Account  Amount  Currency  Category       Description\\n--  ----------  -------  ------  --------  -------------  -----------\\n 2  2026-10-06  uk         1.30  GBP       Uncategorised  PAY\\n 4  2026-10-06  eu         2.40  EUR       Uncategorised  PAY\\n'\n  stderr: ''",
+   "$ tally uncategorised --format csv\n  rc=0\n  stdout: 'Id,Date,Account,Amount,Currency,Category,Description\\n2,2026-10-06,uk,1.30,GBP,Uncategorised,PAY\\n4,2026-10-06,eu,2.40,EUR,Uncategorised,PAY\\n'\n  stderr: ''",
+   "$ tally uncategorised --format json\n  rc=0\n  stdout: '[\\n  {\\n    \"id\": 2,\\n    \"date\": \"2026-10-06\",\\n    \"account\": \"uk\",\\n    \"amount\": \"1.30\",\\n    \"currency\": \"GBP\",\\n    \"category\": null,\\n    \"rule\": null,\\n    \"description\": \"PAY\",\\n    \"memo\": null\\n  },\\n  {\\n    \"id\": 4,\\n    \"date\": \"2026-10-06\",\\n    \"account\": \"eu\",\\n    \"amount\": \"2.40\",\\n    \"currency\": \"EUR\",\\n    \"category\": null,\\n    \"rule\": null,\\n    \"description\": \"PAY\",\\n    \"memo\": null\\n  }\\n]\\n'\n  stderr: ''"
+  ],
+  "seconds": 0.9
+ },
+ "8": {
+  "title": "Formula injection in CSV export",
+  "verdict": "pass",
+  "evidence": [
+   "$ tally import /tmp/tally-X-5eoegj8t/formulae.csv --account cur --layout s\n  rc=0\n  stdout: 'Imported formulae.csv into cur: 8 added, 0 already there, 0 skipped.\\n'\n  stderr: ''",
+   "stored descriptions: ['=1+2', '+SUM(A1)', '-2+3', '@SUM(A1)', 'TAB', 'CR', '=HYPERLINK(\"http://x.invalid\",\"y\")', '|calc']",
+   "$ tally payees --month 2026-10 --format csv\n  rc=0\n  stdout: 'Rank,Currency,Payee,Spending,Count\\n1,GBP,\\'|calc,8.00,1\\n2,GBP,\"\\'=HYPERLINK(\"\"http://x.invalid\"\",\"\"y\"\")\",7.00,1\\n3,GBP,CR,6.00,1\\n4,GBP,TAB,5.00,1\\n5,GBP,\\'@SUM(A1),4.00,1\\n6,GBP,\\'-2+3,3.00,1\\n7,GBP,\\'+SUM(A1),2.00,1\\n8,GBP,\\'=1+2,1.00,1\\n'\n  stderr: ''",
+   "$ tally uncategorised --format csv\n  rc=0\n  stdout: 'Id,Date,Account,Amount,Currency,Category,Description\\n1,2026-10-01,cur,-1.00,GBP,Uncategorised,\\'=1+2\\n2,2026-10-02,cur,-2.00,GBP,Uncategorised,\\'+SUM(A1)\\n3,2026-10-03,cur,-3.00,GBP,Uncategorised,\\'-2+3\\n4,2026-10-04,cur,-4.00,GBP,Uncategorised,\\'@SUM(A1)\\n6,2026-10-06,cur,-6.00,GBP,Uncategorised,CR\\n7,2026-10-07,cur,-7.00,GBP,Uncategorised,\"\\'=HYPERLINK(\"\"http://x.invalid\"\",\"\"y\"\")\"\\n8,2026-10-08,cur,-8.00,GBP,Uncategorised,\\'|calc\\n'\n  stderr: ''",
+   "$ tally report --month 2026-10 --format csv\n  rc=0\n  stdout: \"Month,Currency,Category,Spending,Income,Net,Count\\n2026-10,GBP,Uncategorised,31.00,0.00,-31.00,7\\n2026-10,GBP,'=cmd|' /C calc'!A0,5.00,0.00,-5.00,1\\n\"\n  stderr: ''"
+  ],
+  "seconds": 0.4
+ },
+ "9": {
+  "title": "A 200 MB CSV",
+  "verdict": "fail",
+  "evidence": [
+   "file: 210 MB, 2917101 rows (generated in 3s)",
+   "import rc=0, peak RSS 994 MB, 97 s, transactions stored 2917101, data file 851 MB",
+   "output: Imported huge.csv into cur: 2917101 added, 0 already there, 0 skipped.\n\n---\n",
+   "report --month 2026-03: rc=0, peak RSS 22 MB, 1.7 s"
+  ],
+  "seconds": 102.7
+ },
+ "10": {
+  "title": "Things that aren't statements",
+  "verdict": "fail",
+  "evidence": [
+   "[empty.csv] $ tally import /tmp/tally-X-8o_pwoex/empty.csv --account a --layout s\n  rc=1\n  stdout: ''\n  stderr: 'tally: error: the file is empty or has no header line\\n'\n  stored: []",
+   "[binary.csv] $ tally import /tmp/tally-X-6i7qw6dk/binary.csv --account a --layout s\n  rc=1\n  stdout: ''\n  stderr: \"tally: error: the file does not have the column(s) 'Date', 'Description', 'Amount' that layout 's' expects\\n  The file's header has 1 column(s). Check the layout, or that this is the right file. Run with --show-rows to see the header as the file has it.\\n\"\n  stored: []",
+   "[data.json] $ tally import /tmp/tally-X-_pxf3tkh/data.json --account a --layout s\n  rc=1\n  stdout: ''\n  stderr: \"tally: error: the file does not have the column(s) 'Date', 'Description', 'Amount' that layout 's' expects\\n  The file's header has 2 column(s). Check the layout, or that this is the right file. Run with --show-rows to see the header as the file has it.\\n\"\n  stored: []",
+   "[truncated.ofx] $ tally import /tmp/tally-X-4nu3vik7/truncated.ofx --account a\n  rc=3\n  stdout: 'Imported truncated.ofx into a: 0 added, 0 already there, 1 skipped.\\n  skipped line 11: the transaction has neither NAME nor MEMO\\n  Run with --show-rows to see the values that could not be read.\\n'\n  stderr: ''\n  stored: []",
+   "  neither refused nor read correctly with a message",
+   "[truncated-at-tag.ofx] $ tally import /tmp/tally-X-4f1674ap/truncated-at-tag.ofx --account a\n  rc=3\n  stdout: 'Imported truncated-at-tag.ofx into a: 1 added, 0 already there, 1 skipped.\\n  skipped line 12: the transaction has neither NAME nor MEMO\\n  Run with --show-rows to see the values that could not be read.\\n'\n  stderr: ''\n  stored: [\"2026-10-01 12.34 'INTEREST'\"]",
+   "  neither refused nor read correctly with a message",
+   "[savings-xml.ofx] $ tally import /tmp/tally-X-b5c3q6vl/savings-xml.ofx --account a\n  rc=0\n  stdout: 'Imported savings-xml.ofx into a: 2 added, 0 already there, 0 skipped.\\n'\n  stderr: ''\n  stored: [\"2026-10-01 12.34 'INTEREST'\", \"2026-10-15 -500.00 'TRANSFER TO CURRENT'\"]",
+   "[wrong-encoding-sgml.ofx] $ tally import /tmp/tally-X-y0x68h7j/wrong-encoding-sgml.ofx --account a\n  rc=0\n  stdout: 'Imported wrong-encoding-sgml.ofx into a: 2 added, 0 already there, 0 skipped.\\n'\n  stderr: ''\n  stored: [\"2026-10-01 12.34 'CAFÉ INTEREST'\", \"2026-10-15 -500.00 'TRANSFER TO CURRENT'\"]",
+   "  read with the right characters despite the wrong declaration",
+   "[wrong-encoding-xml.ofx] $ tally import /tmp/tally-X-7ofym41r/wrong-encoding-xml.ofx --account a\n  rc=0\n  stdout: 'Imported wrong-encoding-xml.ofx into a: 2 added, 0 already there, 0 skipped.\\n'\n  stderr: ''\n  stored: [\"2026-10-01 12.34 'CAFÉ INTEREST'\", \"2026-10-15 -500.00 'TRANSFER TO CURRENT'\"]",
+   "  read with the right characters despite the wrong declaration"
+  ],
+  "seconds": 1.3
+ },
+ "11": {
+  "title": "Piping, NO_COLOR, stderr, machine-readable output",
+  "verdict": "pass",
+  "evidence": [
+   "tally report --month 2026-10: piped escapes=False; tty+NO_COLOR escapes=False; tty escapes=True; tty text == piped text once escapes stripped: True",
+   "  tty output: '\\x1b[1mMonth  \\x1b[0m  \\x1b[1mCurrency\\x1b[0m  \\x1b[1mCategory     \\x1b[0m  \\x1b[1mSpending\\x1b[0m  \\x1b[1mIncome\\x1b[0m  \\x1b[1m   Net\\x1b[0m  \\x1b[1mCount\\x1b[0m\\n-------  --------  -------------  --------  ------  ------  -----\\n2026-10  GBP       Shops             10.00    0.00  -10.00      1\\n2026-10  GBP       Uncategorised      1.00    3.00    2.00      2\\n\\x1b[1m2026-10\\x1b[0m  \\x1b[1mGBP     \\x1b[0m  \\x1b[1mTotal        \\x1b[0m  \\x1b[1m   11.00\\x1b[0m  \\x1b[1m  3.00\\x1b[0m  \\x1b[1m -8.00\\x1b[0m  \\x1b[1m    3\\x1b[0m\\nSpending and income are shown as positive amounts; Net is '",
+   "tally payees --month 2026-10: piped escapes=False; tty+NO_COLOR escapes=False; tty escapes=True; tty text == piped text once escapes stripped: True",
+   "  tty output: '\\x1b[1mRank\\x1b[0m  \\x1b[1mCurrency\\x1b[0m  \\x1b[1mPayee\\x1b[0m  \\x1b[1mSpending\\x1b[0m  \\x1b[1mCount\\x1b[0m\\n----  --------  -----  --------  -----\\n   1  GBP       SHOP      10.00      1\\n   2  GBP       OTHER      1.00      1\\n'",
+   "tally uncategorised: piped escapes=False; tty+NO_COLOR escapes=False; tty escapes=True; tty text == piped text once escapes stripped: True",
+   "  tty output: '\\x1b[1mId\\x1b[0m  \\x1b[1mDate      \\x1b[0m  \\x1b[1mAccount\\x1b[0m  \\x1b[1mAmount\\x1b[0m  \\x1b[1mCurrency\\x1b[0m  \\x1b[1mCategory     \\x1b[0m  \\x1b[1mDescription\\x1b[0m\\n--  ----------  -------  ------  --------  -------------  -----------\\n 2  2026-10-06  cur        3.00  GBP       Uncategorised  PAY\\n 3  2026-10-07  cur       -1.00  GBP       Uncategorised  OTHER\\n'",
+   "tally account list: piped escapes=False; tty+NO_COLOR escapes=False; tty escapes=True; tty text == piped text once escapes stripped: True",
+   "  tty output: '\\x1b[1mAccount\\x1b[0m  \\x1b[1mCurrency\\x1b[0m  \\x1b[1mTransactions\\x1b[0m  \\x1b[1mFirst     \\x1b[0m  \\x1b[1mLast\\x1b[0m\\n-------  --------  ------------  ----------  ----------\\ncur      GBP                  3  2026-10-05  2026-10-07\\n'",
+   "tally explain 1: piped escapes=False; tty+NO_COLOR escapes=False; tty escapes=True; tty text == piped text once escapes stripped: True",
+   "  tty output: '\\x1b[1mTransaction 1\\x1b[0m\\n  Account:     cur (GBP)\\n  Date:        2026-10-05\\n  Amount:      -10.00\\n  Description: SHOP\\n\\x1b[1mCategory: Shops, from rule 1\\x1b[0m\\n  Rule 1 matched because every condition held:\\n    yes: description contains \"SHOP\"\\n'",
+   "$ tally import /tmp/tally-X-9emesrv4/m.csv --account nosuch --layout s\n  rc=1\n  stdout: ''\n  stderr: \"tally: error: no account named 'nosuch'\\n  Create it with `tally account add NAME --currency CODE`, or see `tally account list`.\\n\"",
+   "$ tally report --month 2026-13\n  rc=2\n  stdout: ''\n  stderr: 'tally: error: --month must be a month written as YYYY-MM, for example 2026-10\\n'",
+   "$ tally explain 999999\n  rc=1\n  stdout: ''\n  stderr: 'tally: error: no transaction with id 999999\\n'",
+   "$ tally import /tmp/tally-X-9emesrv4/missing.csv --account cur --layout s\n  rc=1\n  stdout: ''\n  stderr: 'tally: error: /tmp/tally-X-9emesrv4/missing.csv is not a file\\n'",
+   "tally report --month 2026-10 --format json: valid JSON",
+   "tally payees --month 2026-10 --format json: valid JSON",
+   "tally uncategorised --format json: valid JSON",
+   "tally account list --format json: valid JSON",
+   "tally explain 1 --format json: NOT AVAILABLE/VALID (2: 'usage: tally [-h] [--version] [--config PATH] [--data PATH]\\n             [--color {auto,always,never}]\\n             COMMAND ...\\ntally: error: unrecognized argum')"
+  ],
+  "seconds": 2.0
+ },
+ "12": {
+  "title": "Permissions of the data file and exports",
+  "verdict": "pass",
+  "evidence": [
+   "umask 022",
+   "tally.db: 0o600",
+   "data directory data/: 0o700",
+   "report --output export.csv: 0o600",
+   "after chmod 644 and a report: 0o600",
+   "after chmod 644 and a write (''): 0o600"
+  ],
+  "seconds": 0.3
+ },
+ "13": {
+  "title": "forget leaves nothing behind",
+  "verdict": "pass",
+  "evidence": [
+   "$ tally import /tmp/tally-X-p3g3zqde/a.csv --account secret --layout s\n  rc=0\n  stdout: 'Imported a.csv into secret: 2 added, 0 already there, 0 skipped.\\n'\n  stderr: ''",
+   "$ tally import /tmp/tally-X-p3g3zqde/b.csv --account keep --layout s\n  rc=0\n  stdout: 'Imported b.csv into keep: 1 added, 0 already there, 0 skipped.\\n'\n  stderr: ''",
+   "$ tally forget secret --yes\n  rc=0\n  stdout: 'Forgot account secret and 2 transaction(s).\\n'\n  stderr: ''",
+   "files in the data directory after forget: ['tally.db']",
+   "marker bytes still present: []",
+   "remaining: [('keep', 'KEEPMEKILO', '-33.33')]"
+  ],
+  "seconds": 0.4
+ },
+ "14": {
+  "title": "No network",
+  "verdict": "pass",
+  "evidence": [
+   "unshare -n tally account add cur --currency GBP -> rc=0",
+   "unshare -n tally account add sav --currency GBP -> rc=0",
+   "unshare -n tally account list -> rc=0",
+   "unshare -n tally import /tmp/tally-X-b6sif5ga/current-account.csv --account cur --layout cur -> rc=0",
+   "unshare -n tally import /tmp/tally-X-b6sif5ga/savings.ofx --account sav -> rc=0",
+   "unshare -n tally import /tmp/tally-X-b6sif5ga/x.ofx --account sav -> rc=0",
+   "unshare -n tally report --month 2026-10 -> rc=0",
+   "unshare -n tally report --month 2026-10 --format csv -> rc=0",
+   "unshare -n tally payees --month 2026-10 -> rc=0",
+   "unshare -n tally uncategorised -> rc=0",
+   "unshare -n tally explain 1 -> rc=0",
+   "unshare -n tally forget sav --yes -> rc=0",
+   "network imports under X/src: none",
+   "socket/urlopen/getaddrinfo references: none",
+   "runtime dependencies: 18:dependencies = []"
+  ],
+  "seconds": 0.8
+ },
+ "15": {
+  "title": "Nothing personal in logs or errors",
+  "verdict": "pass",
+  "evidence": [
+   "most verbose option found in `import --help`: none",
+   "$ tally import /tmp/tally-X-_rvb77m1/good.csv --account cur --layout s\n  rc=0\n  stdout: 'Imported good.csv into cur: 1 added, 0 already there, 0 skipped.\\n'\n  stderr: ''",
+   "$ tally import /tmp/tally-X-_rvb77m1/messy.csv --account cur --layout s\n  rc=3\n  stdout: 'Imported messy.csv into cur: 0 added, 1 already there, 5 skipped.\\n  skipped line 3: could not read the date (expected the format %d/%m/%Y)\\n  skipped line 4: could not read the amount: amount contains characters that are not digits\\n  skipped line 5: expected at least 3 fields, found 2\\n  skipped line 6: could not read the amount: amount has more than one decimal separator\\n  skipped line 7: expected at least 3 fields, found 2\\n  Run with --show-rows to see the values that could not be read.\\n'\n  stderr: ''",
+   "$ tally import /tmp/tally-X-_rvb77m1/messy.csv --account cur --layout bad\n  rc=1\n  stdout: ''\n  stderr: \"tally: error: the file does not have the column(s) 'Nope' that layout 'bad' expects\\n  The file's header has 3 column(s). Check the layout, or that this is the right file. Run with --show-rows to see the header as the file has it.\\n\"",
+   "$ tally import /tmp/tally-X-_rvb77m1/bad.ofx --account cur\n  rc=3\n  stdout: 'Imported bad.ofx into cur: 1 added, 0 already there, 1 skipped.\\n  skipped line 11: could not read the TRNAMT amount: amount contains characters that are not digits\\n  Run with --show-rows to see the values that could not be read.\\n'\n  stderr: ''",
+   "$ tally import /tmp/tally-X-_rvb77m1/eur.ofx --account cur\n  rc=1\n  stdout: ''\n  stderr: \"tally: error: the file is in EUR but account 'cur' is in GBP\\n  Tally never converts currencies. Import it into an account in that currency. Nothing was imported.\\n\"",
+   "$ tally import /tmp/tally-X-_rvb77m1/good.csv --account nosuch --layout s\n  rc=1\n  stdout: ''\n  stderr: \"tally: error: no account named 'nosuch'\\n  Create it with `tally account add NAME --currency CODE`, or see `tally account list`.\\n\"",
+   "$ tally explain 999999\n  rc=1\n  stdout: ''\n  stderr: 'tally: error: no transaction with id 999999\\n'",
+   "$ tally report --month 2026-13\n  rc=2\n  stdout: ''\n  stderr: 'tally: error: --month must be a month written as YYYY-MM, for example 2026-10\\n'",
+   "$ tally report --month 2026-10\n  rc=1\n  stdout: ''\n  stderr: 'tally: error: rule 2: pattern is not a valid regular expression: missing ), unterminated subpattern at position 0\\n'",
+   "other files written under HOME/XDG: none",
+   "markers on standard error / in logs: none"
+  ],
+  "seconds": 0.7
+ },
+ "16": {
+  "title": "Categorisation: first rule wins, and why",
+  "verdict": "pass",
+  "evidence": [
+   "$ tally explain 1\n  rc=0\n  stdout: 'Transaction 1\\n  Account:     cur (GBP)\\n  Date:        2026-10-01\\n  Amount:      -42.17\\n  Description: TESCO STORES 2045, LEEDS\\nCategory: Groceries, from rule 1\\n  Rule 1 matched because every condition held:\\n    yes: description contains \"TESCO\"\\n  Later rules were not tried; the first match wins.\\n'\n  stderr: ''",
+   "$ tally report --month 2026-10 --format json\n  rc=0\n  stdout: '{\\n  \"rows\": [\\n    {\\n      \"month\": \"2026-10\",\\n      \"currency\": \"GBP\",\\n      \"category\": \"Uncategorised\",\\n      \"spending\": \"159.40\",\\n      \"income\": \"2462.50\",\\n      \"net\": \"2303.10\",\\n      \"count\": 4\\n    },\\n    {\\n      \"month\": \"2026-10\",\\n      \"currency\": \"GBP\",\\n      \"category\": \"Groceries\",\\n      \"spending\": \"42.17\",\\n      \"income\": \"0.00\",\\n      \"net\": \"-42.17\",\\n      \"count\": 1\\n    }\\n  ],\\n  \"totals\": [\\n    {\\n      \"month\": \"2026-10\",\\n      \"currency\": \"GBP\",\\n      \"category\": null,\\n      \"spending\": \"201.57\",\\n      \"income\": \"2462.50\",\\n      \"net\": \"2260.93\",\\n      \"count\": 5,\\n      \"total\": true\\n    }\\n  ]\\n}\\n'\n  stderr: ''",
+   "rules reversed:",
+   "$ tally explain 1\n  rc=0\n  stdout: 'Transaction 1\\n  Account:     cur (GBP)\\n  Date:        2026-10-01\\n  Amount:      -42.17\\n  Description: TESCO STORES 2045, LEEDS\\nCategory: Shopping, from rule 1\\n  Rule 1 matched because every condition held:\\n    yes: description matches /^TES/\\n  Later rules were not tried; the first match wins.\\n'\n  stderr: ''",
+   "an uncategorised transaction:",
+   "$ tally explain 2\n  rc=0\n  stdout: 'Transaction 2\\n  Account:     cur (GBP)\\n  Date:        2026-10-02\\n  Amount:      2450.00\\n  Description: SALARY ACME LTD\\nCategory: Uncategorised, because no rule matched\\n  Rules tried before that, and the first condition that failed:\\n    rule 1 (Shopping): no, description matches /^TES/\\n    rule 2 (Groceries): no, description contains \"TESCO\"\\n'\n  stderr: ''"
+  ],
+  "seconds": 0.6
+ }
+}

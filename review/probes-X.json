@@ -1,0 +1,154 @@
+{
+ "P1": {
+  "probe": "An unquoted thousands separator in the amount column.",
+  "result": "defect: imported a wrong amount",
+  "evidence": [
+   "$ tally import /tmp/tally-X-yt6fodn5/t.csv --account a --layout s\n  rc=0\n  stdout: 'Imported t.csv into a: 2 added, 0 already there, 0 skipped.\\n  note: line 2: the row had more fields than the header; the extra text was treated as part of the description\\n'\n  stderr: ''",
+   "stored: [('2026-10-05', '234.56', 'SHOP,-1'), ('2026-10-06', '-1.00', 'OK')]",
+   "$ tally import /tmp/tally-X-qgnxwk7u/c.csv --account a --layout cur\n  rc=0\n  stdout: 'Imported c.csv into a: 1 added, 0 already there, 0 skipped.\\n  note: line 2: the row had more fields than the header; the extra text was treated as part of the description\\n'\n  stderr: ''",
+   "stored: [('2026-10-02', '448.00', 'SALARY ACME LTD,')]"
+  ]
+ },
+ "P2": {
+  "probe": "Terminal control characters in a description.",
+  "result": "defect: raw control characters reach the terminal",
+  "evidence": [
+   "tally uncategorised: raw ESC/BEL on stdout: True; stdout='Id  Date        Account  Amount  Currency  Category       Description\\n--  ----------  -------  ------  --------  -------------  --------------------\\n 1  2026-10-05  a         -1.00  GBP       Uncatego'",
+   "tally payees --month 2026-10: raw ESC/BEL on stdout: True; stdout='Rank  Currency  Payee                 Spending  Count\\n----  --------  --------------------  --------  -----\\n   1  GBP       EVIL\\x1b]0;pwned\\x07\\x1b[2J\\x08X      1.00      1\\n'",
+   "tally explain 1: raw ESC/BEL on stdout: True; stdout='Transaction 1\\n  Account:     a (GBP)\\n  Date:        2026-10-05\\n  Amount:      -1.00\\n  Description: EVIL\\x1b]0;pwned\\x07\\x1b[2J\\x08X\\nCategory: Uncategorised\\n  The configuration has no rules. Add [[rules]] tables t'"
+  ]
+ },
+ "P3": {
+  "probe": "A date_format without a year.",
+  "result": "ok: refused",
+  "evidence": [
+   "$ tally import /tmp/tally-X-ticy8rz5/t.csv --account a --layout s\n  rc=3\n  stdout: 'Imported t.csv into a: 0 added, 0 already there, 1 skipped.\\n  skipped line 2: could not read the date (expected the format %d/%m)\\n  Run with --show-rows to see the values that could not be read.\\n'\n  stderr: ''",
+   "stored: []"
+  ]
+ },
+ "P4": {
+  "probe": "A currency code in the amount text that is not the account's.",
+  "result": "defect: a foreign-currency amount stored as GBP",
+  "evidence": [
+   "$ tally import /tmp/tally-X-x1vwd7y8/t.csv --account a --layout s\n  rc=0\n  stdout: 'Imported t.csv into a: 2 added, 0 already there, 0 skipped.\\n'\n  stderr: ''",
+   "stored in a GBP account: [('2026-10-05', '-12.50', 'SHOP'), ('2026-10-06', '-3.00', 'SHOP2')]"
+  ]
+ },
+ "P5": {
+  "probe": "OFX encodings: a correct CHARSET:1252 declaration, and a wrong UTF-8 one.",
+  "result": "correct 1252 file read right; silently stored wrong text for: ['declared UTF-8, cp1252 bytes (wrong)', 'declared 1252, UTF-8 bytes (wrong)']",
+  "evidence": [
+   "[declared 1252, cp1252 bytes (correct)] $ tally import /tmp/tally-X-owwo5cyf/s.ofx --account a\n  rc=0\n  stdout: 'Imported s.ofx into a: 2 added, 0 already there, 0 skipped.\\n'\n  stderr: ''\n  descriptions: ['CAFÉ € INTEREST', 'TRANSFER TO CURRENT']",
+   "[declared UTF-8, cp1252 bytes (wrong)] $ tally import /tmp/tally-X-3b6m77ou/s.ofx --account a\n  rc=0\n  stdout: 'Imported s.ofx into a: 2 added, 0 already there, 0 skipped.\\n'\n  stderr: ''\n  descriptions: ['CAFÉ \\x80 INTEREST', 'TRANSFER TO CURRENT']",
+   "[declared 1252, UTF-8 bytes (wrong)] $ tally import /tmp/tally-X-zu_pehf0/s.ofx --account a\n  rc=0\n  stdout: 'Imported s.ofx into a: 2 added, 0 already there, 0 skipped.\\n'\n  stderr: ''\n  descriptions: ['CAFÃ‰ â‚¬ INTEREST', 'TRANSFER TO CURRENT']"
+  ]
+ },
+ "P6": {
+  "probe": "A flood of unterminated processing instructions / comments in OFX.",
+  "result": "defect: 84s for a 200 KB file",
+  "evidence": [
+   "[SGML + 200k '<?'] 84.3s rc=0 stderr='' stdout='Imported s.ofx into a: 2 added, 0 already there, 0 skipped.'",
+   "[XML + 200k '<?'] 83.5s rc=0 stderr='' stdout='Imported s.ofx into a: 2 added, 0 already there, 0 skipped.'",
+   "[XML + 100k '<!--'] 44.4s rc=0 stderr='' stdout='Imported s.ofx into a: 2 added, 0 already there, 0 skipped.'"
+  ]
+ },
+ "P7": {
+  "probe": "A FITID reused by the bank for a different transaction.",
+  "result": "defect: the different transaction is silently counted as already there",
+  "evidence": [
+   "$ tally import /tmp/tally-X-qee0dlhc/a.ofx --account a\n  rc=0\n  stdout: 'Imported a.ofx into a: 2 added, 0 already there, 0 skipped.\\n'\n  stderr: ''",
+   "$ tally import /tmp/tally-X-qee0dlhc/b.ofx --account a\n  rc=0\n  stdout: 'Imported b.ofx into a: 0 added, 2 already there, 0 skipped.\\n'\n  stderr: ''",
+   "stored: [('2026-10-01', '12.34', 'INTEREST'), ('2026-10-15', '-500.00', 'TRANSFER TO CURRENT')]"
+  ]
+ },
+ "P8": {
+  "probe": "forget while another program holds the data file open (an idle connection).",
+  "result": "ok",
+  "evidence": [
+   "$ tally import /tmp/tally-X-sebl6txe/a.csv --account a --layout s\n  rc=0\n  stdout: 'Imported a.csv into a: 3000 added, 0 already there, 0 skipped.\\n'\n  stderr: ''",
+   "$ tally forget a --yes\n  rc=0\n  stdout: 'Forgot account a and 3000 transaction(s).\\n'\n  stderr: ''",
+   "files: ['tally.db']",
+   "marker count while the other connection is open: {}",
+   "after it closes: {}"
+  ]
+ },
+ "P9": {
+  "probe": "The same transactions imported as CSV and as OFX.",
+  "result": "counted twice (no cross-format dedup)",
+  "evidence": [
+   "$ tally import /tmp/tally-X-vyosukm1/s.csv --account a --layout s\n  rc=0\n  stdout: 'Imported s.csv into a: 2 added, 0 already there, 0 skipped.\\n'\n  stderr: ''",
+   "$ tally import /tmp/tally-X-vyosukm1/s.ofx --account a\n  rc=0\n  stdout: 'Imported s.ofx into a: 2 added, 0 already there, 0 skipped.\\n'\n  stderr: ''",
+   "transactions: 4"
+  ]
+ },
+ "P10": {
+  "probe": "A large OFX file: peak memory.",
+  "result": "peak 169 MB for 33 MB",
+  "evidence": [
+   "33 MB OFX, 300000 transactions: rc=0, peak RSS 169 MB, 5.2 s, stored 300000",
+   "Imported big.ofx into a: 300000 added, 0 already there, 0 skipped."
+  ]
+ },
+ "P11": {
+  "probe": "Random corruptions of the sample files: any traceback?",
+  "result": "defect: 1 tracebacks",
+  "evidence": [
+   "150 corrupted files imported; tracebacks: 1",
+   "  case 14 from x.ofx: ValueError: unknown encoding 'UTF- standalone=' in layout",
+   "integrity_check: ok"
+  ]
+ },
+ "P12": {
+  "probe": "Another copy holds the data file for longer than the busy timeout.",
+  "result": "ok: refused after 30s, exit 1",
+  "evidence": [
+   "$ tally import /tmp/tally-X-67e9l2z7/t.csv --account a --layout s\n  rc=1\n  stdout: ''\n  stderr: 'tally: error: another copy of Tally is using the data file\\n  Waited 30 seconds. Try again when it has finished.\\n'",
+   "waited 30s; transactions afterwards: 0"
+  ]
+ },
+ "P13": {
+  "probe": "One field longer than 1 MB in a CSV.",
+  "result": "rc=1, stored 0 of 2 good rows",
+  "evidence": [
+   "$ tally import /tmp/tally-X-oq13hrcu/t.csv --account a --layout s\n  rc=1\n  stdout: ''\n  stderr: 'tally: error: line 3: the file is not readable as CSV (field larger than field limit (1048576))\\n  Nothing was imported from it.\\n'",
+   "stored: []"
+  ]
+ },
+ "P14": {
+  "probe": "A Latin-1 CSV whose layout does not name an encoding.",
+  "result": "rc=0, stored ['CAFÉ NERO', 'AMAZON MARKETPLACE', 'PAYMENT RECEIVED - THANK YOU']",
+  "evidence": [
+   "$ tally import /tmp/tally-X-5rew3me_/c.csv --account a --layout card\n  rc=0\n  stdout: 'Imported c.csv into a: 3 added, 0 already there, 0 skipped.\\n'\n  stderr: ''"
+  ]
+ },
+ "P15": {
+  "probe": "A data directory other users can write (e.g. a shared folder).",
+  "result": "rc=0: 'Created account a in GBP.'",
+  "evidence": [
+   "$ tally account add a --currency GBP\n  rc=0\n  stdout: 'Created account a in GBP.\\n'\n  stderr: ''",
+   "directory mode after: 0o777"
+  ]
+ },
+ "P16": {
+  "probe": "Exit code when some rows could not be read (what a scheduled job sees).",
+  "result": "exit 3 with 1 unreadable row; the reason went to stdout",
+  "evidence": [
+   "$ tally import /tmp/tally-X-nlwnyroq/t.csv --account a --layout s\n  rc=3\n  stdout: 'Imported t.csv into a: 1 added, 0 already there, 1 skipped.\\n  skipped line 3: could not read the date (expected the format %d/%m/%Y)\\n  Run with --show-rows to see the values that could not be read.\\n'\n  stderr: ''"
+  ]
+ },
+ "P17": {
+  "probe": "Export written with the build's own option vs a shell redirect, under umask 022.",
+  "result": "--output: 0o600",
+  "evidence": [
+   "shell redirect: 0o644",
+   "--output: 0o600"
+  ]
+ },
+ "P18": {
+  "probe": "An XML OFX whose declaration names an encoding that does not exist (found by P11).",
+  "result": "defect: traceback",
+  "evidence": [
+   "$ tally import /tmp/tally-X-xa3p0csn/s.ofx --account a\n  rc=1\n  stdout: ''\n  stderr: 'Traceback (most recent call last):\\n  File \"/home/user/ledger-review/X/.venv/bin/tally\", line 10, in <module>\\n    sys.exit(main())\\n             ~~~~^^\\n  File \"/home/user/ledger-review/X/src/tally/cli.py\", line 728, in main\\n    return args.func(ctx)\\n           ~~~~~~~~~^^^^^\\n  File \"/home/user/ledger-review/X/src/tally/cli.py\", line 449, in cmd_import\\n    result = import_file(\\n        ctx.store,\\n    ...<5 lines>...\\n        strict=args.strict,\\n    )\\n  File \"/home/user/ledger-review/X/src/tally/importing.py\", line 118, in import_file\\n    _, result.added, result.duplicates = store.record_import(\\n  …[1718 chars]'"
+  ]
+ }
+}

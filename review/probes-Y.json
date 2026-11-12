@@ -1,0 +1,153 @@
+{
+ "P1": {
+  "probe": "An unquoted thousands separator in the amount column.",
+  "result": "ok: not misread",
+  "evidence": [
+   "$ tally import /tmp/tally-Y-c4_2t36k/t.csv --account a --layout s\n  rc=0\n  stdout: 'added 1, already there 0, unreadable 1\\n'\n  stderr: 'line 2: expected 3 columns, found 4\\n'",
+   "stored: [('2026-10-06', '-1.00', 'OK')]",
+   "$ tally import /tmp/tally-Y-38jnec81/c.csv --account a --layout cur\n  rc=0\n  stdout: 'added 0, already there 0, unreadable 1\\n'\n  stderr: 'line 2: expected 5 columns, found 6\\n'",
+   "stored: []"
+  ]
+ },
+ "P2": {
+  "probe": "Terminal control characters in a description.",
+  "result": "ok: replaced",
+  "evidence": [
+   "tally uncategorised: raw ESC/BEL on stdout: False; stdout='1  2026-10-05  a  -1.00 GBP  EVIL␛]0;pwned␇␛[2J␈X\\n'",
+   "tally payees --month 2026-10: raw ESC/BEL on stdout: False; stdout='GBP\\ndescription           total  count\\nEVIL␛]0;pwned␇␛[2J␈X  -1.00      1\\n'",
+   "tally explain 1: raw ESC/BEL on stdout: False; stdout='1  2026-10-05  a  -1.00 GBP  EVIL␛]0;pwned␇␛[2J␈X\\nno rule matched\\n'"
+  ]
+ },
+ "P3": {
+  "probe": "A date_format without a year.",
+  "result": "ok: refused",
+  "evidence": [
+   "$ tally import /tmp/tally-Y-kiovt4fi/t.csv --account a --layout s\n  rc=2\n  stdout: ''\n  stderr: 'layouts.s: date_format \"%d/%m\" is not a date format\\n'",
+   "stored: []"
+  ]
+ },
+ "P4": {
+  "probe": "A currency code in the amount text that is not the account's.",
+  "result": "defect: a foreign-currency amount stored as GBP",
+  "evidence": [
+   "$ tally import /tmp/tally-Y-sgrh6y_y/t.csv --account a --layout s\n  rc=0\n  stdout: 'added 1, already there 0, unreadable 1\\n'\n  stderr: 'line 2: amount is not a number\\n'",
+   "stored in a GBP account: [('2026-10-06', '-3.00', 'SHOP2')]"
+  ]
+ },
+ "P5": {
+  "probe": "OFX encodings: a correct CHARSET:1252 declaration, and a wrong UTF-8 one.",
+  "result": "correct 1252 file read right; silently stored wrong text for: ['declared 1252, UTF-8 bytes (wrong)']",
+  "evidence": [
+   "[declared 1252, cp1252 bytes (correct)] $ tally import /tmp/tally-Y-9j3wpk1q/s.ofx --account a\n  rc=0\n  stdout: 'added 2, already there 0, unreadable 0\\n'\n  stderr: ''\n  descriptions: ['CAFÉ € INTEREST', 'TRANSFER TO CURRENT']",
+   "[declared UTF-8, cp1252 bytes (wrong)] $ tally import /tmp/tally-Y-fytx7fqe/s.ofx --account a\n  rc=1\n  stdout: ''\n  stderr: 'not a text file: not valid utf-8\\n'\n  descriptions: []",
+   "[declared 1252, UTF-8 bytes (wrong)] $ tally import /tmp/tally-Y-b22n2rq5/s.ofx --account a\n  rc=0\n  stdout: 'added 2, already there 0, unreadable 0\\n'\n  stderr: ''\n  descriptions: ['CAFÃ‰ â‚¬ INTEREST', 'TRANSFER TO CURRENT']"
+  ]
+ },
+ "P6": {
+  "probe": "A flood of unterminated processing instructions / comments in OFX.",
+  "result": "ok: worst 0.1s",
+  "evidence": [
+   "[SGML + 200k '<?'] 0.1s rc=1 stderr='not a statement: a processing instruction, which SGML never holds' stdout=''",
+   "[XML + 200k '<?'] 0.1s rc=1 stderr='not a statement: the file ends inside a tag' stdout=''",
+   "[XML + 100k '<!--'] 0.1s rc=1 stderr='not a statement: the file ends inside a tag' stdout=''"
+  ]
+ },
+ "P7": {
+  "probe": "A FITID reused by the bank for a different transaction.",
+  "result": "ok: reported",
+  "evidence": [
+   "$ tally import /tmp/tally-Y-i5r86vn3/a.ofx --account a\n  rc=0\n  stdout: 'added 2, already there 0, unreadable 0\\n'\n  stderr: ''",
+   "$ tally import /tmp/tally-Y-i5r86vn3/b.ofx --account a\n  rc=0\n  stdout: 'added 0, already there 1, unreadable 1\\n'\n  stderr: 'transaction 2: its FITID is already used by a different transaction\\n'",
+   "stored: [('2026-10-01', '12.34', 'INTEREST'), ('2026-10-15', '-500.00', 'TRANSFER TO CURRENT')]"
+  ]
+ },
+ "P8": {
+  "probe": "forget while another program holds the data file open (an idle connection).",
+  "result": "transient: left while another connection was open",
+  "evidence": [
+   "$ tally import /tmp/tally-Y-i46sh17t/a.csv --account a --layout s\n  rc=0\n  stdout: 'added 3000, already there 0, unreadable 0\\n'\n  stderr: ''",
+   "$ tally account forget a --yes\n  rc=0\n  stdout: ''\n  stderr: 'forgot account \"a\" and its 3000 transactions\\n'",
+   "files: ['tally.sqlite']",
+   "marker count while the other connection is open: {'tally.sqlite-wal': 3000}",
+   "after it closes: {}"
+  ]
+ },
+ "P9": {
+  "probe": "The same transactions imported as CSV and as OFX.",
+  "result": "counted twice (no cross-format dedup)",
+  "evidence": [
+   "$ tally import /tmp/tally-Y-ubpozo_a/s.csv --account a --layout s\n  rc=0\n  stdout: 'added 2, already there 0, unreadable 0\\n'\n  stderr: ''",
+   "$ tally import /tmp/tally-Y-ubpozo_a/s.ofx --account a\n  rc=0\n  stdout: 'added 2, already there 0, unreadable 0\\n'\n  stderr: ''",
+   "transactions: 4"
+  ]
+ },
+ "P10": {
+  "probe": "A large OFX file: peak memory.",
+  "result": "peak 22 MB for 33 MB",
+  "evidence": [
+   "33 MB OFX, 300000 transactions: rc=0, peak RSS 22 MB, 4.9 s, stored 300000",
+   "added 300000, already there 0, unreadable 0"
+  ]
+ },
+ "P11": {
+  "probe": "Random corruptions of the sample files: any traceback?",
+  "result": "ok: no tracebacks",
+  "evidence": [
+   "150 corrupted files imported; tracebacks: 0",
+   "integrity_check: ok"
+  ]
+ },
+ "P12": {
+  "probe": "Another copy holds the data file for longer than the busy timeout.",
+  "result": "ok: refused after 10s, exit 3",
+  "evidence": [
+   "$ tally import /tmp/tally-Y-uwzjlkad/t.csv --account a --layout s\n  rc=3\n  stdout: ''\n  stderr: 'another copy of tally is using the data file\\n'",
+   "waited 10s; transactions afterwards: 0"
+  ]
+ },
+ "P13": {
+  "probe": "One field longer than 1 MB in a CSV.",
+  "result": "rc=0, stored 2 of 2 good rows",
+  "evidence": [
+   "$ tally import /tmp/tally-Y-91xr0k1g/t.csv --account a --layout s\n  rc=0\n  stdout: 'added 2, already there 0, unreadable 1\\n'\n  stderr: 'line 3: field longer than 1 MB\\n'",
+   "stored: ['FIRST', 'THIRD']"
+  ]
+ },
+ "P14": {
+  "probe": "A Latin-1 CSV whose layout does not name an encoding.",
+  "result": "rc=1, stored []",
+  "evidence": [
+   "$ tally import /tmp/tally-Y-t2ceprb5/c.csv --account a --layout card\n  rc=1\n  stdout: ''\n  stderr: 'not a text file: not valid utf-8\\n'"
+  ]
+ },
+ "P15": {
+  "probe": "A data directory other users can write (e.g. a shared folder).",
+  "result": "rc=1: 'other users can write the data directory /tmp/tally-Y-arab6t_u/data'",
+  "evidence": [
+   "$ tally account add a --currency GBP\n  rc=1\n  stdout: ''\n  stderr: 'other users can write the data directory /tmp/tally-Y-arab6t_u/data\\n'",
+   "directory mode after: 0o777"
+  ]
+ },
+ "P16": {
+  "probe": "Exit code when some rows could not be read (what a scheduled job sees).",
+  "result": "exit 0 with 1 unreadable row; the reason went to stderr",
+  "evidence": [
+   "$ tally import /tmp/tally-Y-njo2m8ih/t.csv --account a --layout s\n  rc=0\n  stdout: 'added 1, already there 0, unreadable 1\\n'\n  stderr: 'line 3: date does not match %d/%m/%Y\\n'"
+  ]
+ },
+ "P17": {
+  "probe": "Export written with the build's own option vs a shell redirect, under umask 022.",
+  "result": "--output: no such option: usage: tally [-h] [--version] <command> ...\ntally: error: unrecognized arguments: --output /tmp/tall",
+  "evidence": [
+   "shell redirect: 0o644",
+   "--output: no such option: usage: tally [-h] [--version] <command> ...\ntally: error: unrecognized arguments: --output /tmp/tall"
+  ]
+ },
+ "P18": {
+  "probe": "An XML OFX whose declaration names an encoding that does not exist (found by P11).",
+  "result": "ok: rc=1 'not a text file: the declared encoding is unknown'",
+  "evidence": [
+   "$ tally import /tmp/tally-Y-jc9knfto/s.ofx --account a\n  rc=1\n  stdout: ''\n  stderr: 'not a text file: the declared encoding is unknown\\n'"
+  ]
+ }
+}
